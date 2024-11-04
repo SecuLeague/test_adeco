@@ -1,0 +1,29 @@
+---
+- name: Vérifier l'installation de Zabbix
+  hosts: zabbix_server
+  gather_facts: no
+  become: yes
+
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  tasks:
+    - name: Vérifier si le package Zabbix est installé
+      ansible.builtin.command: rpm -q zabbix-server
+      register: zabbix_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Vérifier si le service Zabbix est en cours d'exécution
+      ansible.builtin.systemd:
+        name: zabbix-server
+        state: started
+      check_mode: yes
+      register: zabbix_service
+      failed_when: false
+
+    - name: Afficher le résultat
+      ansible.builtin.debug:
+        msg:
+          - "Zabbix est installé: {{ zabbix_installed.rc == 0 }}"
+          - "Le service Zabbix est en cours d'exécution: {{ zabbix_service.changed == false }}" 

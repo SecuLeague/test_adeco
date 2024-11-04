@@ -1,0 +1,8 @@
+# creation de fichier 
+nano ansible-playbook -i inventory.ini zabbix_agent_install.yml
+#creation de fichier hosts
+ nano inventory.ini 
+#exuction de fichier )
+ansible-playbook -i inventory.ini zabbix_agent_install.yml 
+
+

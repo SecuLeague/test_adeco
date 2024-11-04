@@ -1,0 +1,6 @@
+# creation de fichier 
+nano  check_nginx.yml 
+#creation de fichier hosts
+ nano inventory.ini 
+#exuction de fichier )
+ansible-playbook -i inventory.ini check_nginx.yml 

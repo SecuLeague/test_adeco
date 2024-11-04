@@ -1,0 +1,28 @@
+---
+- name: Vérifier le statut de nginx et les informations de connexion
+  hosts: 10.10.10.200
+  become: yes
+  tasks:
+    - name: Obtenir la dernière connexion réussie
+      command: last -1
+      register: last_login
+      changed_when: false
+
+    - name: Obtenir la dernière tentative de connexion échouée
+      command: lastb -1
+      register: failed_login
+      changed_when: false
+
+    - name: Vérifier le statut de nginx
+      systemd:
+        name: nginx
+        state: started
+      register: nginx_status
+      ignore_errors: yes
+
+    - name: Afficher les résultats
+      debug:
+        msg: |
+          Dernière connexion réussie : {{ last_login.stdout }}
+          Dernière tentative échouée : {{ failed_login.stdout }}
+          Statut de nginx : {{ "En cours d'exécution" if nginx_status.status.ActiveState == 'active' else "Arrêté ou non trouvé" }}
