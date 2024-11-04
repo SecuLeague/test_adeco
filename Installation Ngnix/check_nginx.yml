@@ -1,6 +1,6 @@
 ---
 - name: Vérifier le statut de nginx et les informations de connexion
-  hosts: 10.10.10.200
+  hosts: 10.10.150.50
   become: yes
   tasks:
     - name: Obtenir la dernière connexion réussie
