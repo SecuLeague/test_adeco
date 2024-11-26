@@ -1,0 +1,116 @@
+---
+- name: Test Jenkins Pipeline for Codel Project Deployment
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    jenkins_url: "http://192.168.150.10:8080"
+    jenkins_user: "amal"
+    jenkins_password: "Seculeague@2024"
+    project_name: "Codel-Deployment"
+    git_repo: "https://github.com/SecuLeague/CODEL1.0.git"
+    ssh_key_path: "~/.ssh/id_rsa"
+    ansible_python_interpreter: /usr/bin/python3
+    target_server: "172.16.0.110"
+
+  tasks:
+    - name: Ensure Jenkins is running
+      uri:
+        url: "{{ jenkins_url }}"
+        method: GET
+        status_code: 200
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        force_basic_auth: yes
+      register: jenkins_status
+
+    - name: Create Jenkins job
+      jenkins_job:
+        config: "{{ lookup('template', 'jenkins_job_template.xml.j2') }}"
+        name: "{{ project_name }}"
+        password: "{{ jenkins_password }}"
+        url: "{{ jenkins_url }}"
+        user: "{{ jenkins_user }}"
+      register: jenkins_job
+
+    - name: Debug Jenkins job creation
+      debug:
+        var: jenkins_job
+
+    - name: Generate SSH key if not exists
+      command: ssh-keygen -t rsa -b 2048 -f {{ ssh_key_path }} -N ""
+      args:
+        creates: "{{ ssh_key_path }}"
+
+    - name: Add SSH public key to authorized_keys on target server
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', ssh_key_path + '.pub') }}"
+      delegate_to: "{{ target_server }}"
+
+    - name: Ping target server
+      ping:
+        host: "{{ target_server }}"
+      register: ping_result
+      ignore_errors: yes
+
+    - name: Display ping result
+      debug:
+        var: ping_result
+
+    - name: Check if SSH port is open
+      wait_for:
+        host: "{{ target_server }}"
+        port: 22
+        timeout: 10
+      register: port_check
+      ignore_errors: yes
+
+    - name: Display port check result
+      debug:
+        var: port_check
+
+    - name: Test SSH connection
+      command: ssh -v -o BatchMode=yes -o ConnectTimeout=10 root@{{ target_server }} echo success
+      register: ssh_test
+      ignore_errors: yes
+
+    - name: Display SSH test result
+      debug:
+        var: ssh_test
+
+    - name: Check SSH service status
+      command: systemctl is-active sshd
+      register: ssh_service_status
+      delegate_to: "{{ target_server }}"
+      ignore_errors: yes
+
+    - name: Display SSH service status
+      debug:
+        var: ssh_service_status
+
+    - name: Trigger Jenkins job
+      jenkins_job:
+        name: "{{ project_name }}"
+        url: "{{ jenkins_url }}"
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        state: build
+      when: jenkins_job is defined and jenkins_job.changed
+
+    - name: Wait for job to complete
+      jenkins_job_info:
+        name: "{{ project_name }}"
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        url: "{{ jenkins_url }}"
+      register: job_info
+      until: job_info.jobs[0].color != 'blue_anime'
+      retries: 10
+      delay: 30
+
+    - name: Display job result
+      debug:
+        var: job_info.jobs[0].color

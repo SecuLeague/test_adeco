@@ -1,0 +1,71 @@
+---
+- name: Test Vault integration with Ansible
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    vault_addr: "http://127.0.0.1:8200"
+    vault_token: "hvs.DEHrf26A2FphnKgKm376o0kZ"
+    proxmox_source_environment: "dev"
+    proxmox_destination_environment: "qua"
+
+  tasks:
+    - name: Vérifier l'état de santé de Vault
+      uri:
+        url: "{{ vault_addr }}/v1/sys/health"
+        method: GET
+        status_code: 200
+      register: vault_health
+      ignore_errors: yes
+
+    - name: Afficher l'état de santé de Vault
+      debug:
+        var: vault_health
+
+    - name: Récupérer les secrets source Proxmox depuis Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        engine_mount_point: secret
+        path: "proxmox/{{ proxmox_source_environment }}"
+      register: source_vault_secrets
+      ignore_errors: yes
+      failed_when: false
+
+    - name: Récupérer les secrets destination Proxmox depuis Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        engine_mount_point: secret
+        path: "proxmox/{{ proxmox_destination_environment }}"
+      register: destination_vault_secrets
+      ignore_errors: yes
+      failed_when: false
+
+    - name: Afficher les secrets de l'environnement source
+      debug:
+        msg: "Secrets de l'environnement source ({{ proxmox_source_environment }}): {{ source_vault_secrets.data.data | default('N/A') }}"
+      when: source_vault_secrets.data is defined and source_vault_secrets.data.data is defined
+
+    - name: Afficher les secrets de l'environnement destination
+      debug:
+        msg: "Secrets de l'environnement destination ({{ proxmox_destination_environment }}): {{ destination_vault_secrets.data.data | default('N/A') }}"
+      when: destination_vault_secrets.data is defined and destination_vault_secrets.data.data is defined
+
+    - name: Simuler l'utilisation des identifiants Proxmox pour la source
+      debug:
+        msg: "Connexion à la source Proxmox à {{ source_vault_secrets.data.data.ip | default('N/A') }} avec l'utilisateur {{ source_vault_secrets.data.data.user | default('N/A') }}"
+      when: source_vault_secrets.data is defined and source_vault_secrets.data.data is defined
+
+    - name: Simuler l'utilisation des identifiants Proxmox pour la destination
+      debug:
+        msg: "Connexion à la destination Proxmox à {{ destination_vault_secrets.data.data.ip | default('N/A') }} avec l'utilisateur {{ destination_vault_secrets.data.data.user | default('N/A') }}"
+      when: destination_vault_secrets.data is defined and destination_vault_secrets.data.data is defined
+
+    - name: Afficher les résultats
+      debug:
+        msg:
+          - "Vault accessible : {{ vault_health.status == 200 }}"
+          - "Secrets source Proxmox récupérés : {{ source_vault_secrets.data is defined }}"
+          - "Secrets destination Proxmox récupérés : {{ destination_vault_secrets.data is defined }}"

@@ -1,0 +1,102 @@
+---
+- name: Test CODEL 1.0.0 Git Repository and Jenkins Integration
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    ansible_ssh_pass: ro0t@sys
+    ansible_ssh_timeout: 60
+    git_repo: "/root/CODEL1.0"
+    jenkins_url: "http://192.168.150.10:8080"
+    jenkins_user: "amal"
+    jenkins_api_token: "11e6cdba6083554658c8463aaecbe80e10"
+    job_name: "CODEL1.0-CI"
+
+  tasks:
+    - name: Vérifier l'état du dépôt Git manuellement
+      command: ssh root@192.168.150.10 "cd {{ git_repo }} && /usr/bin/git status"
+      register: git_status
+      changed_when: false
+
+    - name: Afficher l'état Git
+      debug:
+        var: git_status.stdout_lines
+
+    - name: Obtenir le crumb CSRF
+      uri:
+        url: "{{ jenkins_url }}/crumbIssuer/api/json"
+        method: GET
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        validate_certs: no
+      register: crumb_response
+
+    - name: Vérifier que Jenkins est en cours d'exécution
+      uri:
+        url: "{{ jenkins_url }}"
+        method: GET
+ status_code: 200
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        validate_certs: no
+      register: jenkins_status
+
+    - name: Créer un job Jenkins
+      uri:
+        url: "{{ jenkins_url }}/createItem?name={{ job_name | urlencode }}"
+        method: POST
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        body_format: raw
+        body: "{{ lookup('template', 'jenkins_job_template.xml.j2') }}"
+        status_code: [200, 201, 400]
+        headers:
+          Content-Type: "application/xml"
+          "{{ crumb_response.json.crumbRequestField }}": "{{ crumb_response.json.crumb }}"
+        validate_certs: no
+      ignore_errors: yes
+      register: create_job_result
+
+    - name: Déclencher le job Jenkins
+      uri:
+        url: "{{ jenkins_url }}/job/{{ job_name | urlencode }}/build"
+        method: POST
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        status_code: [201, 302, 400]
+        headers:
+          "{{ crumb_response.json.crumbRequestField }}": "{{ crumb_response.json.crumb }}"
+        validate_certs: no
+      ignore_errors: yes
+      register: trigger_job_result
+ - name: Attendre que le job soit terminé
+      uri:
+        url: "{{ jenkins_url }}/job/{{ job_name | urlencode }}/api/json"
+        method: GET
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        return_content: yes
+        validate_certs: no
+      register: job_info
+      until:
+         - job_info.json is defined and job_info.json.color is defined and job_info.json.color != 'blue_anime'
+      retries: 10
+      delay: 30
+      ignore_errors: yes
+      when:
+         - trigger_job_result.status in [201, 302]
+
+    - name: Afficher le résultat du job Jenkins
+      debug:
+        var: job_info.json.color
+
+    - name: Afficher les résultats des opérations Jenkins
+      debug:
+        msg:
+          - "Création du job : {{ 'Réussie' if create_job_result.status in [200, 201] else 'Échouée ou job déjà existant' }}"
+          - "Déclenchement du job : {{ 'Réussi' if trigger_job_result.status in [201, 302] else 'Échoué' }}"
