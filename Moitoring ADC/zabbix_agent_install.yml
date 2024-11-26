@@ -6,24 +6,35 @@
 
   vars:
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_become_password: ro0t@sys
 
   tasks:
     - name: Vérifier si le package Zabbix est installé
-      ansible.builtin.command: rpm -q zabbix-server
+      package:
+        name: zabbix-server
+        state: present
+      check_mode: yes
       register: zabbix_installed
-      changed_when: false
-      failed_when: false
+      ignore_errors: yes
 
     - name: Vérifier si le service Zabbix est en cours d'exécution
-      ansible.builtin.systemd:
+      service:
         name: zabbix-server
         state: started
       check_mode: yes
       register: zabbix_service
-      failed_when: false
+      ignore_errors: yes
+
+    - name: Vérifier la connectivité au serveur Zabbix
+      uri:
+        url: "http://{{ ansible_host }}:10051"
+        method: GET
+      register: zabbix_connectivity
+      ignore_errors: yes
 
     - name: Afficher le résultat
-      ansible.builtin.debug:
+      debug:
         msg:
-          - "Zabbix est installé: {{ zabbix_installed.rc == 0 }}"
-          - "Le service Zabbix est en cours d'exécution: {{ zabbix_service.changed == false }}" 
+          - "Zabbix est installé: {{ not zabbix_installed.failed }}"
+          - "Le service Zabbix est en cours d'exécution: {{ not zabbix_service.failed }}"
+          - "Connectivité au serveur: {{ zabbix_connectivity.status | default('Non accessible') }}"
