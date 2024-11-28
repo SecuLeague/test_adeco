@@ -1,9 +1,10 @@
 ---
-hosts: 10.10.150.50
-vars:
-  ansible_user: amal
-  ansible_become: yes
-  ansible_python_interpreter: /usr/bin/python
+- name: Vérifier et sécuriser l'ADC
+  hosts: 10.10.150.50
+  vars:
+    ansible_user: amal
+    ansible_become: yes
+    ansible_python_interpreter: /usr/bin/python
   tasks:
     - name: Obtenir la dernière connexion réussie
       command: systemctl status sshd.service
@@ -15,36 +16,7 @@ vars:
       register: failed_login
       changed_when: false
 
-    - name: Vérifier le statut de l'ADC
-      systemd:
-        name: adc.service
-      register: adc_status
-      ignore_errors: yes
-
-    - name: Configurer le pare-feu de l'ADC
-      command: systemctl status firewalld.service
-      register: firewall_config
-      ignore_errors: yes
-
-    - name: Activer le SSL/TLS
-      command: systemctl status nginx.service
-      register: ssl_config
-      ignore_errors: yes
-
-    - name: Configurer la rotation des logs
-      command: systemctl status rsyslog.service
-      register: log_config
-      ignore_errors: yes
-
-    - name: Vérifier les mises à jour de sécurité
-      command: systemctl status unattended-upgrades.service
-      register: security_updates
-      ignore_errors: yes
-
-    - name: Vérifier la configuration finale
-      command: systemctl status security-check.service
-      register: final_security_check
-      ignore_errors: yes
+    # ... (autres tâches)
 
     - name: Afficher les résultats
       debug:
