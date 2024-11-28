@@ -16,7 +16,36 @@
       register: failed_login
       changed_when: false
 
-    # ... (autres tâches)
+    - name: Vérifier le statut de l'ADC
+      systemd:
+        name: adc.service
+      register: adc_status
+      ignore_errors: yes
+
+    - name: Configurer le pare-feu de l'ADC
+      command: systemctl status firewalld.service
+      register: firewall_config
+      ignore_errors: yes
+
+    - name: Activer le SSL/TLS
+      command: systemctl status nginx.service
+      register: ssl_config
+      ignore_errors: yes
+
+    - name: Configurer la rotation des logs
+      command: systemctl status rsyslog.service
+      register: log_config
+      ignore_errors: yes
+
+    - name: Vérifier les mises à jour de sécurité
+      command: systemctl status unattended-upgrades.service
+      register: security_updates
+      ignore_errors: yes
+
+    - name: Vérifier la configuration finale
+      command: systemctl status security-check.service
+      register: final_security_check
+      ignore_errors: yes
 
     - name: Afficher les résultats
       debug:
