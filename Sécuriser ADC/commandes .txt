@@ -3,5 +3,5 @@ nano  secure_adc.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook secure_adc.yml 
+ansible-playbook secure_adc.yml -e "10.10.150.50 ansible_user=amal ansible_become=yes ansible_python_interpreter=/usr/bin/python"
 
