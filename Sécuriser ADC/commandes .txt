@@ -3,6 +3,6 @@ nano  secure_adc.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook secure_adc.yml -vvv
+ansible-playbook secure_adc.yml --connection=local
 
 
