@@ -1,5 +1,6 @@
 ---
 - name: Vérifier et sécuriser l'ADC
+  hosts: adc
   tasks:
     - name: Obtenir la dernière connexion réussie
       command: systemctl status sshd.service
