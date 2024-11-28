@@ -16,7 +16,8 @@
       changed_when: false
 
     - name: Vérifier le statut de l'ADC
-      command: systemctl status adc.service
+      systemd:
+        name: adc.service
       register: adc_status
       ignore_errors: yes
 
@@ -50,7 +51,7 @@
         msg: |
           Dernière connexion réussie : {{ last_login.stdout }}
           Dernière tentative échouée : {{ failed_login.stdout }}
-          Statut de l'ADC : {{ "En cours d'exécution" if adc_status.rc == 0 else "Arrêté ou problème détecté" }}
+          Statut de l'ADC : {{ "En cours d'exécution" if adc_status.status == "started" else "Arrêté ou problème détecté" }}
           Configuration du pare-feu : {{ firewall_config.stdout }}
           Configuration SSL/TLS : {{ ssl_config.stdout }}
           Configuration des logs : {{ log_config.stdout }}
