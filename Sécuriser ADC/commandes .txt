@@ -3,6 +3,6 @@ nano  secure_adc.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook -i inventory.ini secure_adc.yml --limit 10.10.150.50
+ansible-playbook -i inventory.ini secure_adc.yml -e "hosts=10.10.150.50"
 
 
