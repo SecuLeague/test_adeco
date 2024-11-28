@@ -3,4 +3,4 @@ nano  secure_adc.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook -i inventory.ini  secure_adc.yml -vvv
+ansible-playbook -i /home/walid/inventory.ini secure_adc.yml -vvv
