@@ -1,6 +1,6 @@
 ---
 - name: Vérifier l'installation de Zabbix
-  hosts: zabbix_server
+  hosts: "{zabbix_server}"
   gather_facts: no
   become: yes
 
