@@ -1,6 +1,6 @@
 ---
 - name: Vérifier et sécuriser l'ADC
-  hosts: [my_hosts]
+  hosts: my_hosts
   become: yes
   gather_facts: no
 
