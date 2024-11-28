@@ -1,6 +1,6 @@
 ---
 - name: Vérifier et sécuriser l'ADC
-  hosts: '10.10.150.50'
+  hosts: "10.10.150.50"
   become: yes
   gather_facts: no
 
