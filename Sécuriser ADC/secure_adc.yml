@@ -1,10 +1,5 @@
 ---
 - name: Vérifier et sécuriser l'ADC
-  hosts: "10.10.150.50"
-  vars:
-    ansible_user: amal
-    ansible_become: yes
-    ansible_python_interpreter: /usr/bin/python
   tasks:
     - name: Obtenir la dernière connexion réussie
       command: systemctl status sshd.service
