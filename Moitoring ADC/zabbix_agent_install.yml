@@ -1,6 +1,6 @@
 ---
 - name: Vérifier l'installation de Zabbix
-  hosts: 10.10.150.50
+  hosts: "10.10.150.50"
   gather_facts: no
   become: yes
 
