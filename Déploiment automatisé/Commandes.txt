@@ -7,7 +7,7 @@ nano test9.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook -i inventory.ini Deploiement ADC .yml -vv
+ansible-playbook -i Déploiment automatisé/inventory.ini Deploiement ADC .yml -vv
 ansible-playbook -i inventory.ini test6.yml -vv
 ansible-playbook -i inventory.ini test7.yml -vv
 ansible-playbook -i inventory.ini test8.yml -vv
