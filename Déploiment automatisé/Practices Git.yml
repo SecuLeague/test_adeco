@@ -3,6 +3,7 @@
   hosts: localhost
   connection: local
   gather_facts: no
+
   vars:
     ansible_ssh_pass: ro0t@sys
     ansible_ssh_timeout: 60
@@ -36,7 +37,7 @@
       uri:
         url: "{{ jenkins_url }}"
         method: GET
- status_code: 200
+        status_code: 200
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_api_token }}"
         force_basic_auth: yes
@@ -73,7 +74,8 @@
         validate_certs: no
       ignore_errors: yes
       register: trigger_job_result
- - name: Attendre que le job soit terminé
+
+    - name: Attendre que le job soit terminé
       uri:
         url: "{{ jenkins_url }}/job/{{ job_name | urlencode }}/api/json"
         method: GET
@@ -83,13 +85,11 @@
         return_content: yes
         validate_certs: no
       register: job_info
-      until:
-         - job_info.json is defined and job_info.json.color is defined and job_info.json.color != 'blue_anime'
+      until: job_info.json is defined and job_info.json.color is defined and job_info.json.color != 'blue_anime'
       retries: 10
       delay: 30
       ignore_errors: yes
-      when:
-         - trigger_job_result.status in [201, 302]
+      when: trigger_job_result.status in [201, 302]
 
     - name: Afficher le résultat du job Jenkins
       debug:
