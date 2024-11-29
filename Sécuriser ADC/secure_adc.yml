@@ -1,19 +1,24 @@
- name: Vérifier et sécuriser l'ADC
+---
+- name: Vérifier et sécuriser l'ADC
   hosts: 10.10.150.50
   become: yes
+  gather_facts: no
+
   tasks:
     - name: Obtenir la dernière connexion réussie
       command: systemctl status sshd.service
       register: last_login
       changed_when: false
+      ignore_errors: yes
 
     - name: Obtenir la dernière tentative de connexion échouée
-      command: systemctl status sshd.service  # Remplacez par un service valide
+      command: systemctl status sshd.service
       register: failed_login
       changed_when: false
+      ignore_errors: yes
 
     - name: Vérifier le statut de l'ADC
-      command: systemctl status adc.service  # Remplacez par un service valide
+      command: systemctl status adc.service
       register: adc_status
       ignore_errors: yes
 
@@ -23,17 +28,23 @@
       ignore_errors: yes
 
     - name: Activer le SSL/TLS
-      command: systemctl status nginx.service  # Remplacez par un service valide
+      command: systemctl status nginx.service
       register: ssl_config
       ignore_errors: yes
 
     - name: Configurer la rotation des logs
-      command: systemctl status rsyslog.service  # Remplacez par un service valide
+      command: systemctl status rsyslog.service
       register: log_config
       ignore_errors: yes
-- name: Vérifier les mises à jour de sécurité
-      command: systemctl status unattended-upgrades.service  # Remplacez par un service valide
+
+    - name: Vérifier les mises à jour de sécurité
+      command: systemctl status unattended-upgrades.service
       register: security_updates
+      ignore_errors: yes
+
+    - name: Vérifier la configuration finale
+      command: systemctl status security-check.service
+      register: final_security_check
       ignore_errors: yes
 
     - name: Afficher les résultats
@@ -46,12 +57,4 @@
           Configuration SSL/TLS : {{ ssl_config.stdout }}
           Configuration des logs : {{ log_config.stdout }}
           Mises à jour de sécurité : {{ security_updates.stdout }}
----
-    - name: Vérifier la configuration finale
-       command: systemctl status security-check.service  # Remplacez par un service valide
-      register: final_security_check
-      ignore_errors: yes
-
-    - name: Afficher le rapport de sécurité final
-      debug:
-        msg: "Rapport de sécurité final : {{ final_security_check.stdout }}" 
+          Rapport de sécurité final : {{ final_security_check.stdout }}
