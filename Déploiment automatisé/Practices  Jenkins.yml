@@ -4,15 +4,6 @@
   connection: local
   gather_facts: no
 
-  pre_tasks:
-    - name: Install required packages
-      pip:
-        name: 
-          - python-jenkins
-          - requests
-        state: present
-      become: yes
-
   vars:
     jenkins_url: "http://192.168.150.10:8080"
     jenkins_user: "amal"
@@ -24,49 +15,15 @@
     target_server: "172.16.0.110"
 
   tasks:
-    - name: Create Jenkins job template
-      copy:
-        content: |
-          <?xml version='1.0' encoding='UTF-8'?>
-          <project>
-            <description>{{ project_name }}</description>
-            <scm class="hudson.plugins.git.GitSCM">
-              <userRemoteConfigs>
-                <hudson.plugins.git.UserRemoteConfig>
-                  <url>{{ git_repo }}</url>
-                </hudson.plugins.git.UserRemoteConfig>
-              </userRemoteConfigs>
-              <branches>
-                <hudson.plugins.git.BranchSpec>
-                  <name>*/main</name>
-                </hudson.plugins.git.BranchSpec>
-              </branches>
-            </scm>
-          </project>
-        dest: "jenkins_job_template.xml.j2"
-
     - name: Ensure Jenkins is running
       uri:
-        url: "{{ jenkins_url }}/api/json"
+        url: "{{ jenkins_url }}"
         method: GET
-        status_code: [200, 403]
+        status_code: 200
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
         force_basic_auth: yes
-        validate_certs: no
       register: jenkins_status
-      ignore_errors: yes
-
-    - name: Get Jenkins crumb
-      uri:
-        url: "{{ jenkins_url }}/crumbIssuer/api/json"
-        method: GET
-        user: "{{ jenkins_user }}"
-        password: "{{ jenkins_password }}"
-        force_basic_auth: yes
-        validate_certs: no
-      register: crumb
-      when: jenkins_status is success
 
     - name: Create Jenkins job
       jenkins_job:
@@ -76,32 +33,63 @@
         url: "{{ jenkins_url }}"
         user: "{{ jenkins_user }}"
       register: jenkins_job
-      when: jenkins_status is success
 
-    - name: Setup SSH connection
-      block:
-        - name: Generate SSH key if not exists
-          openssh_keypair:
-            path: "{{ ssh_key_path }}"
-            type: rsa
-            size: 2048
-            state: present
-          
-        - name: Add SSH public key to authorized_keys
-          authorized_key:
-            user: root
-            state: present
-            key: "{{ lookup('file', ssh_key_path + '.pub') }}"
-          delegate_to: "{{ target_server }}"
-          become: yes
+    - name: Debug Jenkins job creation
+      debug:
+ var: jenkins_job
 
-    - name: Test SSH connectivity
+    - name: Generate SSH key if not exists
+      command: ssh-keygen -t rsa -b 2048 -f {{ ssh_key_path }} -N ""
+      args:
+        creates: "{{ ssh_key_path }}"
+
+    - name: Add SSH public key to authorized_keys on target server
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', ssh_key_path + '.pub') }}"
+      delegate_to: "{{ target_server }}"
+
+    - name: Ping target server
+      ping:
+        host: "{{ target_server }}"
+      register: ping_result
+      ignore_errors: yes
+
+    - name: Display ping result
+      debug:
+        var: ping_result
+
+    - name: Check if SSH port is open
       wait_for:
         host: "{{ target_server }}"
         port: 22
         timeout: 10
-      register: ssh_check
+      register: port_check
       ignore_errors: yes
+
+    - name: Display port check result
+      debug:
+        var: port_check
+
+  - name: Test SSH connection
+      command: ssh -v -o BatchMode=yes -o ConnectTimeout=10 root@{{ target_server }} echo success
+   register: ssh_test
+      ignore_errors: yes
+
+    - name: Display SSH test result
+      debug:
+        var: ssh_test
+
+    - name: Check SSH service status
+      command: systemctl is-active sshd
+      register: ssh_service_status
+      delegate_to: "{{ target_server }}"
+      ignore_errors: yes
+
+    - name: Display SSH service status
+      debug:
+        var: ssh_service_status
 
     - name: Trigger Jenkins job
       jenkins_job:
@@ -110,8 +98,7 @@
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
         state: build
-      when: jenkins_job is success
-      register: triggered_job
+      when: jenkins_job is defined and jenkins_job.changed
 
     - name: Wait for job to complete
       jenkins_job_info:
@@ -123,107 +110,8 @@
       until: job_info.jobs[0].color != 'blue_anime'
       retries: 10
       delay: 30
-      when: triggered_job is success
 
-## 2. Vault Playbook
-```yaml
----
-- name: Test Vault integration with Ansible
-  hosts: localhost
-  connection: local
-  gather_facts: no
+    - name: Display job result
+  debug:
+        var: job_info.jobs[0].color
 
-  pre_tasks:
-    - name: Install required packages
-      pip:
-        name: 
-          - hvac
-          - requests
-        state: present
-      become: yes
-
-  vars:
-    vault_addr: "http://127.0.0.1:8200"
-    vault_token: "hvs.DEHrf26A2FphnKgKm376o0kZ"
-    proxmox_source_environment: "dev"
-    proxmox_destination_environment: "qua"
-
-  tasks:
-    - name: Verify Vault health
-      uri:
-        url: "{{ vault_addr }}/v1/sys/health"
-        method: GET
-        status_code: [200, 429, 472, 473, 501, 503]
-        validate_certs: no
-      register: vault_health
-      ignore_errors: yes
-
-    - name: Display Vault health status
-      debug:
-        var: vault_health
-
-    - name: Retrieve Proxmox source secrets
-      uri:
-        url: "{{ vault_addr }}/v1/secret/data/proxmox/{{ proxmox_source_environment }}"
-        method: GET
-        headers:
-          X-Vault-Token: "{{ vault_token }}"
-        status_code: [200, 404]
-        validate_certs: no
-      register: source_vault_secrets
-      ignore_errors: yes
-      when: vault_health is success
-
-    - name: Display results
-      debug:
-        msg:
-          - "Vault accessible: {{ vault_health.status == 200 }}"
-          - "Source secrets retrieved: {{ source_vault_secrets.status == 200 if source_vault_secrets is defined else 'No' }}"
-
-## 3. Git Playbook
-```yaml
----
-- name: Test CODEL 1.0.0 Git Repository and Jenkins Integration
-  hosts: localhost
-  connection: local
-  gather_facts: no
-
-  vars:
-    ansible_ssh_pass: ro0t@sys
-    ansible_ssh_timeout: 60
-    git_repo: "/root/CODEL1.0"
-    jenkins_url: "http://192.168.150.10:8080"
-    jenkins_user: "amal"
-    jenkins_api_token: "11e6cdba6083554658c8463aaecbe80e10"
-    job_name: "CODEL1.0-CI"
-
-  tasks:
-    - name: Vérifier l'état du dépôt Git manuellement
-      command: ssh root@192.168.150.10 "cd {{ git_repo }} && /usr/bin/git status"
-      register: git_status
-      changed_when: false
-
-    - name: Afficher l'état Git
-      debug:
-        var: git_status.stdout_lines
-
-    - name: Obtenir le crumb CSRF
-      uri:
-        url: "{{ jenkins_url }}/crumbIssuer/api/json"
-        method: GET
-        user: "{{ jenkins_user }}"
-        password: "{{ jenkins_api_token }}"
-        force_basic_auth: yes
-        validate_certs: no
-      register: crumb_response
-
-    - name: Vérifier que Jenkins est en cours d'exécution
-      uri:
-        url: "{{ jenkins_url }}"
-        method: GET
-        status_code: 200
-        user: "{{ jenkins_user }}"
-        password: "{{ jenkins_api_token }}"
-        force_basic_auth: yes
-        validate_certs: no
-      register: jenkins_status
