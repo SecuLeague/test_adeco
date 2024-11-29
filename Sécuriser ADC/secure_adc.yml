@@ -1,5 +1,6 @@
----
-- name: Vérifier et sécuriser l'ADC
+ name: Vérifier et sécuriser l'ADC
+  hosts: 10.10.150.50
+  become: yes
   tasks:
     - name: Obtenir la dernière connexion réussie
       command: systemctl status sshd.service
@@ -7,13 +8,12 @@
       changed_when: false
 
     - name: Obtenir la dernière tentative de connexion échouée
-      command: systemctl status sshd.service
+      command: systemctl status sshd.service  # Remplacez par un service valide
       register: failed_login
       changed_when: false
 
     - name: Vérifier le statut de l'ADC
-      systemd:
-        name: adc.service
+      command: systemctl status adc.service  # Remplacez par un service valide
       register: adc_status
       ignore_errors: yes
 
@@ -23,23 +23,17 @@
       ignore_errors: yes
 
     - name: Activer le SSL/TLS
-      command: systemctl status nginx.service
+      command: systemctl status nginx.service  # Remplacez par un service valide
       register: ssl_config
       ignore_errors: yes
 
     - name: Configurer la rotation des logs
-      command: systemctl status rsyslog.service
+      command: systemctl status rsyslog.service  # Remplacez par un service valide
       register: log_config
       ignore_errors: yes
-
-    - name: Vérifier les mises à jour de sécurité
-      command: systemctl status unattended-upgrades.service
+- name: Vérifier les mises à jour de sécurité
+      command: systemctl status unattended-upgrades.service  # Remplacez par un service valide
       register: security_updates
-      ignore_errors: yes
-
-    - name: Vérifier la configuration finale
-      command: systemctl status security-check.service
-      register: final_security_check
       ignore_errors: yes
 
     - name: Afficher les résultats
@@ -47,9 +41,17 @@
         msg: |
           Dernière connexion réussie : {{ last_login.stdout }}
           Dernière tentative échouée : {{ failed_login.stdout }}
-          Statut de l'ADC : {{ "En cours d'exécution" if adc_status.status == "started" else "Arrêté ou problème détecté" }}
+          Statut de l'ADC : {{ "En cours d'exécution" if adc_status.rc == 0 else "Arrêté ou problème détecté" }}
           Configuration du pare-feu : {{ firewall_config.stdout }}
           Configuration SSL/TLS : {{ ssl_config.stdout }}
           Configuration des logs : {{ log_config.stdout }}
           Mises à jour de sécurité : {{ security_updates.stdout }}
-          Rapport de sécurité final : {{ final_security_check.stdout }}
+---
+    - name: Vérifier la configuration finale
+       command: systemctl status security-check.service  # Remplacez par un service valide
+      register: final_security_check
+      ignore_errors: yes
+
+    - name: Afficher le rapport de sécurité final
+      debug:
+        msg: "Rapport de sécurité final : {{ final_security_check.stdout }}" 
