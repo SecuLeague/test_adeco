@@ -5,11 +5,6 @@
   gather_facts: no
 
   pre_tasks:
-    - name: Install compatible version of community.general
-      command: ansible-galaxy collection install community.general:==7.0.0
-      ignore_errors: yes
-      changed_when: false
-
     - name: Install required Python packages
       pip:
         name: 
@@ -29,6 +24,27 @@
     target_server: "172.16.0.110"
 
   tasks:
+    - name: Create Jenkins job template
+      copy:
+        content: |
+          <?xml version='1.0' encoding='UTF-8'?>
+          <project>
+            <description>{{ project_name }}</description>
+            <scm class="hudson.plugins.git.GitSCM">
+              <userRemoteConfigs>
+                <hudson.plugins.git.UserRemoteConfig>
+                  <url>{{ git_repo }}</url>
+                </hudson.plugins.git.UserRemoteConfig>
+              </userRemoteConfigs>
+              <branches>
+                <hudson.plugins.git.BranchSpec>
+                  <name>*/main</name>
+                </hudson.plugins.git.BranchSpec>
+              </branches>
+            </scm>
+          </project>
+        dest: "jenkins_job_template.xml"
+
     - name: Ensure Jenkins is running
       uri:
         url: "{{ jenkins_url }}/api/json"
@@ -42,25 +58,25 @@
       ignore_errors: yes
 
     - name: Create Jenkins job
-      jenkins_job:
-        config: "{{ lookup('template', 'jenkins_job_template.xml.j2') }}"
-        name: "{{ project_name }}"
-        password: "{{ jenkins_password }}"
-        url: "{{ jenkins_url }}"
+      uri:
+        url: "{{ jenkins_url }}/createItem?name={{ project_name }}"
+        method: POST
         user: "{{ jenkins_user }}"
+        password: "{{ jenkins_password }}"
+        force_basic_auth: yes
+        body: "{{ lookup('file', 'jenkins_job_template.xml') }}"
+        body_format: raw
+        headers:
+          Content-Type: application/xml
+        status_code: [200, 201, 302]
+        validate_certs: no
       register: jenkins_job
       when: jenkins_status is success
 
-    - name: Debug Jenkins job creation
-      debug:
-        var: jenkins_job
-
     - name: Generate SSH key if not exists
-      openssh_keypair:
-        path: "{{ ssh_key_path }}"
-        type: rsa
-        size: 2048
-        state: present
+      command: ssh-keygen -t rsa -b 2048 -f {{ ssh_key_path }} -N ""
+      args:
+        creates: "{{ ssh_key_path }}"
 
     - name: Add SSH public key to authorized_keys
       authorized_key:
@@ -84,33 +100,35 @@
       delegate_to: "{{ target_server }}"
       ignore_errors: yes
 
-    - name: Display SSH service status
-      debug:
-        var: ssh_service_status
-
     - name: Trigger Jenkins job
-      jenkins_job:
-        name: "{{ project_name }}"
-        url: "{{ jenkins_url }}"
+      uri:
+        url: "{{ jenkins_url }}/job/{{ project_name }}/build"
+        method: POST
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
-        state: build
+        force_basic_auth: yes
+        status_code: [201, 302]
+        validate_certs: no
       when: jenkins_job is success
       register: triggered_job
 
     - name: Wait for job to complete
-      jenkins_job_info:
-        name: "{{ project_name }}"
+      uri:
+        url: "{{ jenkins_url }}/job/{{ project_name }}/api/json"
+        method: GET
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
-        url: "{{ jenkins_url }}"
+        force_basic_auth: yes
+        return_content: yes
+        validate_certs: no
       register: job_info
-      until: job_info.jobs[0].color != 'blue_anime'
+      until: job_info.json is defined and job_info.json.color != 'blue_anime'
       retries: 10
       delay: 30
       when: triggered_job is success
 
-    - name: Display job result
+    - name: Display results
       debug:
-        var: job_info.jobs[0].color
-      when: job_info is success
+        msg:
+          - "Jenkins status: {{ jenkins_status.status | default('Not running') }}"
+          - "Job status: {{ job_info.json.color | default('Unknown') if job_info.json is defined else 'Not available' }}"
