@@ -5,9 +5,16 @@
   gather_facts: no
 
   pre_tasks:
-    - name: Install required packages
+    - name: Install compatible version of community.general
+      command: ansible-galaxy collection install community.general:==7.0.0
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install required Python packages
       pip:
-        name: python-jenkins
+        name: 
+          - python-jenkins
+          - requests
         state: present
       become: yes
 
