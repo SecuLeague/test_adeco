@@ -4,10 +4,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 try:
     # Setup Chrome WebDriver with WebDriver Manager
+    options = webdriver.ChromeOptions()
+    # Specify the path to the Chrome binary if necessary
+    # options.binary_location = "/path/to/chrome"
+
     service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service)
+    driver = webdriver.Chrome(service=service, options=options)
     
-    # Navigate to the URL (fixed quotes)
+    # Navigate to the URL
     driver.get('http://172.16.100.1:4444')
     
     # Wait for user input
