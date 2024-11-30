@@ -4,6 +4,13 @@
   connection: local
   gather_facts: no
 
+  pre_tasks:
+    - name: Install required packages
+      pip:
+        name: python-jenkins
+        state: present
+      become: yes
+
   vars:
     jenkins_url: "http://192.168.150.10:8080"
     jenkins_user: "amal"
@@ -17,13 +24,15 @@
   tasks:
     - name: Ensure Jenkins is running
       uri:
-        url: "{{ jenkins_url }}"
+        url: "{{ jenkins_url }}/api/json"
         method: GET
-        status_code: 200
+        status_code: [200, 403]
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
         force_basic_auth: yes
+        validate_certs: no
       register: jenkins_status
+      ignore_errors: yes
 
     - name: Create Jenkins job
       jenkins_job:
@@ -33,56 +42,37 @@
         url: "{{ jenkins_url }}"
         user: "{{ jenkins_user }}"
       register: jenkins_job
+      when: jenkins_status is success
 
     - name: Debug Jenkins job creation
       debug:
- var: jenkins_job
+        var: jenkins_job
 
     - name: Generate SSH key if not exists
-      command: ssh-keygen -t rsa -b 2048 -f {{ ssh_key_path }} -N ""
-      args:
-        creates: "{{ ssh_key_path }}"
+      openssh_keypair:
+        path: "{{ ssh_key_path }}"
+        type: rsa
+        size: 2048
+        state: present
 
-    - name: Add SSH public key to authorized_keys on target server
+    - name: Add SSH public key to authorized_keys
       authorized_key:
         user: root
         state: present
         key: "{{ lookup('file', ssh_key_path + '.pub') }}"
       delegate_to: "{{ target_server }}"
-
-    - name: Ping target server
-      ping:
-        host: "{{ target_server }}"
-      register: ping_result
       ignore_errors: yes
 
-    - name: Display ping result
-      debug:
-        var: ping_result
-
-    - name: Check if SSH port is open
+    - name: Test SSH connectivity
       wait_for:
         host: "{{ target_server }}"
         port: 22
         timeout: 10
-      register: port_check
+      register: ssh_check
       ignore_errors: yes
-
-    - name: Display port check result
-      debug:
-        var: port_check
-
-  - name: Test SSH connection
-      command: ssh -v -o BatchMode=yes -o ConnectTimeout=10 root@{{ target_server }} echo success
-   register: ssh_test
-      ignore_errors: yes
-
-    - name: Display SSH test result
-      debug:
-        var: ssh_test
 
     - name: Check SSH service status
-      command: systemctl is-active sshd
+      command: systemctl status sshd
       register: ssh_service_status
       delegate_to: "{{ target_server }}"
       ignore_errors: yes
@@ -98,7 +88,8 @@
         user: "{{ jenkins_user }}"
         password: "{{ jenkins_password }}"
         state: build
-      when: jenkins_job is defined and jenkins_job.changed
+      when: jenkins_job is success
+      register: triggered_job
 
     - name: Wait for job to complete
       jenkins_job_info:
@@ -110,8 +101,9 @@
       until: job_info.jobs[0].color != 'blue_anime'
       retries: 10
       delay: 30
+      when: triggered_job is success
 
     - name: Display job result
-  debug:
+      debug:
         var: job_info.jobs[0].color
-
+      when: job_info is success
