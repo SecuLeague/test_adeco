@@ -11,9 +11,7 @@ try:
     options.add_argument('--headless')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.add_argument('--disable-software-rasterizer')
     options.add_argument('--window-size=1920,1080')
-    options.add_argument('--start-maximized')
     options.page_load_strategy = 'eager'
     
     # Configuration du service avec timeout augmenté
@@ -22,12 +20,12 @@ try:
     
     # Initialisation du driver avec des timeouts plus longs
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(60)
-    driver.implicitly_wait(30)
+    driver.set_page_load_timeout(180)  # Augmentation du timeout à 180 secondes
+    driver.implicitly_wait(60)  # Attente implicite de 60 secondes
     
     # Navigation avec wait explicite
-    wait = WebDriverWait(driver, 30)
-    driver.get('http://172.16.100.1:4444')
+    wait = WebDriverWait(driver, 60)  # Attente explicite de 60 secondes
+    driver.get('http://localhost:47743')
     
     print("Navigation réussie")
 
