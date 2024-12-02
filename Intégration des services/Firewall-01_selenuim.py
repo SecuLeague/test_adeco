@@ -3,24 +3,36 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 try:
-    # Setup Chrome WebDriver with WebDriver Manager
+    # Configuration des options Chrome
     options = webdriver.ChromeOptions()
-    # Specify the path to the Chrome binary if necessary
-    # options.binary_location = "/path/to/chrome"
+    options.add_argument('--no-sandbox')
+    options.add_argument('--headless')  # Mode sans interface graphique
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--disable-setuid-sandbox')
+    options.add_argument('--remote-debugging-port=9222')
 
+    # Installation et configuration du service Chrome
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
     
-    # Navigate to the URL
+    # Configuration du timeout
+    driver.set_page_load_timeout(30)
+    
+    # Navigation vers l'URL
     driver.get('http://172.16.100.1:4444')
     
-    # Wait for user input
-    input("Press any key to exit.")
+    # Attendre que la page soit chargée
+    driver.implicitly_wait(10)
+    
+    print("Navigation réussie")
 
 except Exception as e:
     print(f"Error occurred: {str(e)}")
 
 finally:
-    # Ensure the driver is closed properly
+    # Fermeture propre du driver
     if 'driver' in locals():
         driver.quit()
