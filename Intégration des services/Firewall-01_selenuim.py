@@ -3,37 +3,36 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 try:
     # Configuration des options Chrome
     options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--disable-gpu')
     
-    # Configuration du service avec timeout augmenté
-    service = Service(ChromeDriverManager().install())
-    service.start()
+    # Configuration du service
+    service = Service('/usr/bin/chromedriver')
     
-    # Création du driver avec timeout personnalisé
+    # Création du driver avec timeout augmenté
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(300)  # Augmentation du timeout à 300 secondes
+    driver.set_page_load_timeout(300)  # Timeout augmenté à 300 secondes
     
-    # Navigation avec WebDriverWait
-    driver.get('http://172.16.150.2/')
+    # Configuration du WebDriverWait avec timeout augmenté
+    wait = WebDriverWait(driver, 300)  # Timeout d'attente augmenté à 300 secondes
     
-    # Attente explicite des éléments
-    wait = WebDriverWait(driver, 30)
-    username = wait.until(EC.presence_of_element_located((By.ID, "usernamefld")))
-    password = driver.find_element(By.ID, "passwordfld")
+    # Navigation
+    driver.get('http://172.16.150.2')
     
-    # Remplir les champs
+    # Attente des éléments avec le nouveau timeout
+    username = wait.until(EC.presence_of_element_located((By.NAME, "usernamefld")))
+    password = driver.find_element(By.NAME, "passwordfld")
+    
     username.send_keys("admin")
     password.send_keys("pfsense")
     
-    # Cliquer sur le bouton login
-    login_button = driver.find_element(By.NAME, "login")
+    login_button = driver.find_element(By.CLASS_NAME, "btn")
     login_button.click()
     
     print("Connexion réussie")
