@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import time
+import os
 
 try:
     # Configuration des options Chrome
@@ -12,32 +12,31 @@ try:
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.add_experimental_option('detach', True)
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument('--remote-debugging-port=0')
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
-    # Configuration du service
-    service = Service(ChromeDriverManager().install())
+    # Configuration du service avec chemin explicite
+    service = Service(executable_path='/usr/bin/chromedriver')
     
     # Création du driver
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_page_load_timeout(20)
     
-    # Navigation avec pause
+    # Navigation vers pfSense
     driver.get('http://172.16.150.2')
-    time.sleep(2)
     
-    # Attente explicite des éléments
+    # Attente des éléments
     wait = WebDriverWait(driver, 10)
-    username = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Username']")))
-    password = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']")
+    username = wait.until(EC.presence_of_element_located((By.NAME, "Username")))
+    password = driver.find_element(By.NAME, "Password")
     
-    # Remplir les champs avec pause
+    # Remplir les champs
     username.send_keys("admin")
-    time.sleep(1)
     password.send_keys("pfsense")
-    time.sleep(1)
     
-    # Cliquer sur le bouton
-    sign_in = driver.find_element(By.CSS_SELECTOR, "button.btn")
+    # Cliquer sur le bouton SIGN IN
+    sign_in = driver.find_element(By.CLASS_NAME, "btn")
     sign_in.click()
     
     print("Connexion réussie")
