@@ -23,7 +23,7 @@ try:
     
     # Navigation vers l'URL avec gestion d'erreur réseau
     try:
-        driver.get('http://172.16.100.1:4444')
+        driver.get('http://172.16.150.2/')
         print("Navigation réussie")
     except:
         print("Erreur de connexion au serveur")
