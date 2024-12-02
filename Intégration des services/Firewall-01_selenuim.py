@@ -11,30 +11,30 @@ try:
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--remote-debugging-port=0')
+    options.page_load_strategy = 'eager'  # Chargement plus rapide
     
-    # Installation et configuration du service
+    # Configuration du service
     service = Service(ChromeDriverManager().install())
     
-    # Création du driver
+    # Création du driver avec timeouts personnalisés
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(30)
+    driver.set_page_load_timeout(10)
+    driver.set_script_timeout(10)
     
-    # Navigation vers pfSense
+    # Navigation avec retry
     driver.get('http://172.16.150.2')
     
-    # Attente des éléments avec les bons sélecteurs
-    wait = WebDriverWait(driver, 10)
-    username = wait.until(EC.presence_of_element_located((By.ID, "Username")))
-    password = driver.find_element(By.ID, "Password")
+    # Attente explicite des éléments avec timeout court
+    wait = WebDriverWait(driver, 5)
+    username = wait.until(EC.presence_of_element_located((By.NAME, "usernamefld")))
+    password = driver.find_element(By.NAME, "passwordfld")
     
     # Remplir les champs
     username.send_keys("admin")
     password.send_keys("pfsense")
     
-    # Cliquer sur le bouton SIGN IN
-    sign_in = driver.find_element(By.CSS_SELECTOR, "button.btn")
+    # Cliquer sur le bouton
+    sign_in = driver.find_element(By.CLASS_NAME, "btn")
     sign_in.click()
     
     print("Connexion réussie")
