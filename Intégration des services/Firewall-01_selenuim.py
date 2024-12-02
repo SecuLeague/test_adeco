@@ -3,35 +3,34 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 try:
+    # Installation et configuration du ChromeDriver
+    service = Service(ChromeDriverManager(version="latest").install())
+    
     # Configuration des options Chrome
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
     
-    # Configuration du service
-    service = Service('/usr/bin/chromedriver')
-    
-    # Création du driver avec timeout augmenté
+    # Création du driver avec le service configuré
     driver = webdriver.Chrome(service=service, options=options)
-    driver.set_page_load_timeout(300)  # Timeout augmenté à 300 secondes
+    driver.set_page_load_timeout(300)
     
-    # Configuration du WebDriverWait avec timeout augmenté
-    wait = WebDriverWait(driver, 300)  # Timeout d'attente augmenté à 300 secondes
-    
-    # Navigation
+    # Navigation vers pfSense
     driver.get('http://172.16.150.2')
     
-    # Attente des éléments avec le nouveau timeout
+    # Attente des éléments
+    wait = WebDriverWait(driver, 30)
     username = wait.until(EC.presence_of_element_located((By.NAME, "usernamefld")))
     password = driver.find_element(By.NAME, "passwordfld")
     
+    # Remplir les champs
     username.send_keys("admin")
     password.send_keys("pfsense")
     
+    # Cliquer sur le bouton
     login_button = driver.find_element(By.CLASS_NAME, "btn")
     login_button.click()
     
