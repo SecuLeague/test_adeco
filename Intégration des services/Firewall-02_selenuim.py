@@ -14,6 +14,7 @@ def check_server_availability(url, timeout=30):
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            # Utilisation de requests avec verify=False pour ignorer la vérification SSL
             response = requests.get(url, timeout=timeout, verify=False)
             if response.status_code == 200:
                 return True
@@ -26,11 +27,10 @@ def check_server_availability(url, timeout=30):
 
 def main():
     try:
-        # Vérifier la disponibilité du serveur avec plusieurs tentatives
+        # Vérifier la disponibilité du serveur avec curl -k
         print("Vérification de la disponibilité du serveur...")
-        if not check_server_availability('https://172.16.150.1:4444', timeout=30):
-            print("Le serveur n'est pas accessible après plusieurs tentatives. Vérifiez votre connexion réseau.")
-            return
+        curl_command = ["curl", "-k", "https://172.16.150.1:4444/"]
+        subprocess.run(curl_command, check=True)
 
         # Configuration des options Chrome
         options = webdriver.ChromeOptions()
@@ -39,6 +39,7 @@ def main():
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
         options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--ignore-ssl-errors=yes')
         options.add_argument('--remote-debugging-port=9222')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
@@ -55,15 +56,17 @@ def main():
         
         # Attente des éléments avec un timeout plus long
         wait = WebDriverWait(driver, 30)
-        username = wait.until(EC.presence_of_element_located((By.ID, "usernamefld")))
-        password = driver.find_element(By.ID, "passwordfld")
+        
+        # Mise à jour des sélecteurs selon l'interface visible
+        username = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Username']")))
+        password = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']")
         
         # Remplir les champs
         username.send_keys("admin")
         password.send_keys("pfsense")
         
         # Cliquer sur le bouton SIGN IN
-        sign_in = driver.find_element(By.NAME, "login")
+        sign_in = driver.find_element(By.CSS_SELECTOR, "button.btn")
         sign_in.click()
         
         # Attendre que la page soit chargée après la connexion
@@ -71,6 +74,8 @@ def main():
         
         print("Connexion réussie")
 
+    except subprocess.CalledProcessError:
+        print("Erreur lors de la vérification avec curl")
     except Exception as e:
         print(f"Une erreur s'est produite : {str(e)}")
         print("Traceback complet:")
