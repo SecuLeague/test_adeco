@@ -9,13 +9,13 @@ from webdriver_manager.chrome import ChromeDriverManager
 import traceback
 
 async def check_server_availability(url):
-    """Vérifie la disponibilité du serveur en utilisant curl."""
+    """Vérifie la disponibilité du serveur en utilisant http."""
     try:
-        # Utiliser curl pour vérifier la disponibilité du serveur avec -k pour ignorer les erreurs SSL
-        result = subprocess.run(['curl', '-k', '-o', '/dev/null', '-s', '-w', '%{http_code}', url], capture_output=True, text=True)
-        return result.stdout == '200'
+        # Utiliser http pour vérifier la disponibilité du serveur avec --verify=no pour ignorer les erreurs SSL
+        result = subprocess.run(['http', '--verify=no', url], capture_output=True, text=True)
+        return result.returncode == 0  # 0 indique que la commande a réussi
     except Exception as e:
-        print(f"Erreur lors de l'exécution de curl : {str(e)}")
+        print(f"Erreur lors de l'exécution de http : {str(e)}")
         return False
 
 async def main():
