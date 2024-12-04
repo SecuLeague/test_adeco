@@ -1,3 +1,4 @@
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -7,6 +8,13 @@ from webdriver_manager.chrome import ChromeDriverManager
 import os
 
 try:
+    # Exécution de la commande cURL
+    curl_command = ["curl", "-v", "http://172.16.150.2/"]
+    curl_output = subprocess.run(curl_command, capture_output=True, text=True)
+    print("Sortie cURL:")
+    print(curl_output.stdout)
+    print(curl_output.stderr)
+
     # Configuration des options Chrome
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
