@@ -27,6 +27,18 @@ def main():
     try:
         print("Vérification de la disponibilité du serveur...")
         
+        # Exécution de la commande curl
+        curl_command = "curl -k -u admin https://172.16.150.1:4444/"
+        curl_process = subprocess.Popen(curl_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        curl_output, curl_error = curl_process.communicate()
+        
+        print("Résultat de la commande curl:")
+        print(curl_output.decode())
+        
+        if curl_error:
+            print("Erreur curl:")
+            print(curl_error.decode())
+        
         # Configuration des options Chrome
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -34,6 +46,8 @@ def main():
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
         options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--start-maximized')
+        options.add_argument('--disable-extensions')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
         # Configuration du service avec installation automatique
@@ -41,14 +55,22 @@ def main():
         
         # Création du driver avec un timeout plus long
         driver = webdriver.Chrome(service=service, options=options)
+        
+        # Augmenter le timeout implicite
+        driver.implicitly_wait(30)
+
+        # Augmenter le timeout de chargement de page
         driver.set_page_load_timeout(60)
+
+        # Augmenter le timeout de script
+        driver.set_script_timeout(30)
         
         # Navigation vers pfSense
         print("Tentative de connexion à pfSense...")
-        driver.get('http://172.16.150.2')
+        driver.get('https://172.16.150.1:4444/')
         
-        # Attendre que la page soit chargée
-        wait = WebDriverWait(driver, 30)
+        # Utiliser un wait explicite avec un timeout plus long
+        wait = WebDriverWait(driver, 60)
         
         # Cliquer sur le bouton "Credential Login" s'il existe
         try:
@@ -60,7 +82,7 @@ def main():
 
         # Attendre et remplir les champs de connexion
         username = wait.until(EC.presence_of_element_located((By.ID, "username")))
-        password = driver.find_element(By.ID, "password")
+        password = wait.until(EC.presence_of_element_located((By.ID, "password")))
         
         # Effacer et remplir les champs
         username.clear()
@@ -69,11 +91,11 @@ def main():
         password.send_keys("pfsense")
         
         # Cliquer sur le bouton Login
-        login_button = driver.find_element(By.NAME, "loginbutton")
+        login_button = wait.until(EC.element_to_be_clickable((By.NAME, "loginbutton")))
         login_button.click()
         
         # Attendre la redirection
-        time.sleep(5)
+        wait.until(EC.url_changes('https://172.16.150.1:4444/'))
         
         print("Connexion réussie")
 
