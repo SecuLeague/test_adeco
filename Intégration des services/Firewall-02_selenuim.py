@@ -9,6 +9,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import traceback
 
 async def check_server_availability(url):
+    """Vérifie la disponibilité du serveur en utilisant curl."""
     try:
         # Utiliser curl pour vérifier la disponibilité du serveur avec -k pour ignorer les erreurs SSL
         result = subprocess.run(['curl', '-k', '-o', '/dev/null', '-s', '-w', '%{http_code}', url], capture_output=True, text=True)
@@ -18,6 +19,7 @@ async def check_server_availability(url):
         return False
 
 async def main():
+    """Fonction principale pour vérifier le serveur et se connecter à pfSense."""
     try:
         print("Vérification de la disponibilité du serveur...")
         
@@ -25,6 +27,7 @@ async def main():
             print("Le serveur n'est pas accessible. Vérifiez votre connexion réseau.")
             return
 
+        # Configuration des options pour Chrome
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
@@ -33,9 +36,9 @@ async def main():
         options.add_argument('--ignore-certificate-errors')
         options.add_argument('--start-maximized')
         options.add_argument('--disable-extensions')
-        options.add_argument('--blink-settings=imagesEnabled=false')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        
+
+        # Initialisation du driver Chrome
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         driver.set_page_load_timeout(30)
@@ -44,24 +47,27 @@ async def main():
         driver.get('https://172.16.150.1:4444/')
         
         wait = WebDriverWait(driver, 30)
-        
+
+        # Tentative de connexion avec gestion des éléments
         try:
             cred_login = wait.until(EC.presence_of_element_located((By.NAME, "credloginbutton")))
             cred_login.click()
-        except:
-            pass
+        except Exception as e:
+            print(f"Erreur lors de la recherche du bouton de connexion : {str(e)}")
 
         username = wait.until(EC.presence_of_element_located((By.ID, "username")))
         password = wait.until(EC.presence_of_element_located((By.ID, "password")))
         
         username.clear()
         username.send_keys("admin")
+        
         password.clear()
         password.send_keys("sophos")  # Mot de passe modifié ici
         
         login_button = wait.until(EC.element_to_be_clickable((By.NAME, "loginbutton")))
         login_button.click()
         
+        # Attendre que l'URL change après la connexion
         wait.until(EC.url_changes('https://172.16.150.1:4444/'))
         
         print("Connexion réussie")
