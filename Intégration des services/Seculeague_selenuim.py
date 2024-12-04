@@ -17,7 +17,10 @@ def check_server_availability(url, timeout=30):
     for attempt in range(max_retries):
         try:
             response = requests.get(url, timeout=timeout, verify=False)
-            return True
+            if response.status_code == 200:
+                return True
+            else:
+                print(f"Erreur HTTP : {response.status_code}")
         except requests.RequestException as e:
             print(f"Tentative {attempt + 1}/{max_retries} échouée : {e}")
             if attempt < max_retries - 1:
@@ -25,8 +28,17 @@ def check_server_availability(url, timeout=30):
     return False
 
 def main():
+    url = 'https://www.seculeague.link'
+    
+    # Vérification de la disponibilité du serveur avec curl
+    print("Vérification de la disponibilité du serveur avec curl...")
+    
+    if not check_server_availability(url):
+        print("Le serveur n'est pas disponible. Arrêt du script.")
+        return
+
     try:
-        print("Vérification de la disponibilité du serveur...")
+        print("Vérification de la disponibilité du serveur avec Selenium...")
         
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -47,7 +59,7 @@ def main():
         driver.set_script_timeout(30)
         
         print("Tentative de connexion à pfSense...")
-        driver.get('https://www.seculeague.link')
+        driver.get(url)
         
         wait = WebDriverWait(driver, 60)
         
@@ -69,7 +81,7 @@ def main():
         login_button = wait.until(EC.element_to_be_clickable((By.NAME, "loginbutton")))
         login_button.click()
         
-        wait.until(EC.url_changes('https://www.seculeague.link'))
+        wait.until(EC.url_changes(url))
         
         print("Connexion réussie")
 
