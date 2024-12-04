@@ -9,16 +9,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 import requests
 import traceback
 import time
+from selenium.webdriver.common.keys import Keys
 
 def check_server_availability(url, timeout=30):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # Utilisation de requests avec verify=False pour ignorer la vérification SSL
             response = requests.get(url, timeout=timeout, verify=False)
-            if response.status_code == 200:
-                return True
-            time.sleep(5)
+            return True
         except requests.RequestException as e:
             print(f"Tentative {attempt + 1}/{max_retries} échouée : {e}")
             if attempt < max_retries - 1:
@@ -27,11 +25,8 @@ def check_server_availability(url, timeout=30):
 
 def main():
     try:
-        # Vérifier la disponibilité du serveur avec curl -k
         print("Vérification de la disponibilité du serveur...")
-        curl_command = ["curl", "-k", "https://172.16.150.1:4444/"]
-        subprocess.run(curl_command, check=True)
-
+        
         # Configuration des options Chrome
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -39,8 +34,6 @@ def main():
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
         options.add_argument('--ignore-certificate-errors')
-        options.add_argument('--ignore-ssl-errors=yes')
-        options.add_argument('--remote-debugging-port=9222')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
         # Configuration du service avec installation automatique
@@ -52,30 +45,38 @@ def main():
         
         # Navigation vers pfSense
         print("Tentative de connexion à pfSense...")
-        driver.get('https://172.16.150.1:4444')
+        driver.get('http://172.16.150.2')
         
-        # Attente des éléments avec un timeout plus long
+        # Attendre que la page soit chargée
         wait = WebDriverWait(driver, 30)
         
-        # Mise à jour des sélecteurs selon l'interface visible
-        username = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Username']")))
-        password = driver.find_element(By.CSS_SELECTOR, "input[placeholder='Password']")
+        # Cliquer sur le bouton "Credential Login" s'il existe
+        try:
+            cred_login = wait.until(EC.presence_of_element_located((By.NAME, "credloginbutton")))
+            cred_login.click()
+            time.sleep(2)
+        except:
+            pass
+
+        # Attendre et remplir les champs de connexion
+        username = wait.until(EC.presence_of_element_located((By.ID, "username")))
+        password = driver.find_element(By.ID, "password")
         
-        # Remplir les champs
+        # Effacer et remplir les champs
+        username.clear()
         username.send_keys("admin")
+        password.clear()
         password.send_keys("pfsense")
         
-        # Cliquer sur le bouton SIGN IN
-        sign_in = driver.find_element(By.CSS_SELECTOR, "button.btn")
-        sign_in.click()
+        # Cliquer sur le bouton Login
+        login_button = driver.find_element(By.NAME, "loginbutton")
+        login_button.click()
         
-        # Attendre que la page soit chargée après la connexion
-        wait.until(EC.url_changes('https://172.16.150.1:4444'))
+        # Attendre la redirection
+        time.sleep(5)
         
         print("Connexion réussie")
 
-    except subprocess.CalledProcessError:
-        print("Erreur lors de la vérification avec curl")
     except Exception as e:
         print(f"Une erreur s'est produite : {str(e)}")
         print("Traceback complet:")
