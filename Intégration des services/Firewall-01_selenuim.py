@@ -28,7 +28,7 @@ def main():
     try:
         # Vérifier la disponibilité du serveur avec plusieurs tentatives
         print("Vérification de la disponibilité du serveur...")
-        if not check_server_availability('http://172.16.150.2', timeout=30):
+        if not check_server_availability('https://172.16.150.2', timeout=30):
             print("Le serveur n'est pas accessible après plusieurs tentatives. Vérifiez votre connexion réseau.")
             return
 
