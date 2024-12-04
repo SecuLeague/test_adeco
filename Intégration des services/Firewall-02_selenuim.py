@@ -1,5 +1,5 @@
 import asyncio
-import aiohttp
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -8,13 +8,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import traceback
 
-async def check_server_availability(url, timeout=10):
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, timeout=timeout, ssl=False) as response:
-                return response.status == 200
-        except aiohttp.ClientError:
-            return False
+async def check_server_availability(url):
+    try:
+        # Utiliser curl pour vérifier la disponibilité du serveur avec -k pour ignorer les erreurs SSL
+        result = subprocess.run(['curl', '-k', '-o', '/dev/null', '-s', '-w', '%{http_code}', url], capture_output=True, text=True)
+        return result.stdout == '200'
+    except Exception as e:
+        print(f"Erreur lors de l'exécution de curl : {str(e)}")
+        return False
 
 async def main():
     try:
@@ -33,7 +34,6 @@ async def main():
         options.add_argument('--start-maximized')
         options.add_argument('--disable-extensions')
         options.add_argument('--blink-settings=imagesEnabled=false')
-        options.add_argument('--disable-javascript')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
         service = Service(ChromeDriverManager().install())
@@ -57,7 +57,7 @@ async def main():
         username.clear()
         username.send_keys("admin")
         password.clear()
-        password.send_keys("pfsense")
+        password.send_keys("sophos")  # Mot de passe modifié ici
         
         login_button = wait.until(EC.element_to_be_clickable((By.NAME, "loginbutton")))
         login_button.click()
