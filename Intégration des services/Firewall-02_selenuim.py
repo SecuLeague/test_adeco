@@ -64,17 +64,6 @@ def main():
             driver.get(url)
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
             
-            # Récupérer et afficher le titre de la page pour confirmer qu'il s'agit bien de Sophos
-            title = driver.title
-            if title.strip():  # Vérifie si le titre n'est pas vide
-                print(f"Titre de la page : {title}")
-                if "Sophos" in title:
-                    print("L'URL pointe vers une page Sophos.")
-                else:
-                    print("L'URL ne semble pas pointer vers une page Sophos.")
-            else:
-                print("Impossible de récupérer le titre de la page.")
-
             # Afficher les 500 premiers caractères du contenu HTML pour vérification supplémentaire
             content = driver.page_source
             print("Contenu de la page (extrait) :")
