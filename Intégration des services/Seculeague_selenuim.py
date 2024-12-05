@@ -38,7 +38,7 @@ def check_server_availability(driver, url, timeout=10):
         return False
 
 def main():
-    url = 'https://www.seculeague.link/'  # URL à vérifier
+    url = 'https://www.seculeague.net/'  # URL à vérifier
     
     # Installer geckodriver si nécessaire
     if not os.path.exists('/usr/local/bin/geckodriver'):
