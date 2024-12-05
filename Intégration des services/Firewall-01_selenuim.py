@@ -1,3 +1,5 @@
+import os
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
@@ -6,6 +8,26 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import traceback
+
+def install_geckodriver():
+    print("Installation de geckodriver...")
+    try:
+        subprocess.run("wget https://github.com/mozilla/geckodriver/releases/latest/download/geckodriver-v0.33.0-linux64.tar.gz && "
+                       "tar -xvzf geckodriver-v0.33.0-linux64.tar.gz && "
+                       "chmod +x geckodriver && "
+                       "sudo mv geckodriver /usr/local/bin/", shell=True, check=True)
+        print("geckodriver installé avec succès.")
+    except subprocess.CalledProcessError as e:
+        print(f"Erreur lors de l'installation de geckodriver : {e}")
+        print("Tentative d'installation avec curl...")
+        try:
+            subprocess.run("curl -L https://github.com/mozilla/geckodriver/releases/latest/download/geckodriver-v0.33.0-linux64.tar.gz | tar -xz && "
+                           "chmod +x geckodriver && "
+                           "sudo mv geckodriver /usr/local/bin/", shell=True, check=True)
+            print("geckodriver installé avec succès en utilisant curl.")
+        except subprocess.CalledProcessError as e:
+            print(f"Erreur lors de l'installation de geckodriver avec curl : {e}")
+            raise
 
 def check_server_availability(driver, url, timeout=10):
     try:
@@ -18,10 +40,14 @@ def check_server_availability(driver, url, timeout=10):
 def main():
     url = 'http://172.16.150.2/'  # URL à vérifier
     
+    # Installer geckodriver si nécessaire
+    if not os.path.exists('/usr/local/bin/geckodriver'):
+        install_geckodriver()
+    
     options = Options()
     options.add_argument('-headless')
     
-    service = Service('path/to/geckodriver')  # Remplacez par le chemin vers votre geckodriver
+    service = Service('/usr/local/bin/geckodriver')
     
     try:
         with webdriver.Firefox(service=service, options=options) as driver:
