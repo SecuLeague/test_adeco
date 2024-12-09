@@ -7,8 +7,8 @@ nano Practices Vault.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
-ansible-playbook -i Déploiment automatisé/inventory.ini Deploiement ADC .yml -vv
-ansible-playbook -i Déploiment automatisé/ inventory.ini Integration ADC .yml -vv
+ansible-playbook -i Déploiment automatisé/inventory.ini Deploiement ADC.yml -vv
+ansible-playbook -i Déploiment automatisé/ inventory.ini Integration ADC.yml -vv
 ansible-playbook -i Déploiment automatisé/inventory.ini Practices Jenkins.yml -vv
 ansible-playbook -i Déploiment automatisé/inventory.ini Practices Git.yml -vv
 ansible-playbook -i Déploiment automatisé/inventory.ini Practices Vault.yml -vv
