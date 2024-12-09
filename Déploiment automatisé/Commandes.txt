@@ -1,14 +1,14 @@
 # creation de fichier 
-nano test5.yml
-nano test6.yml
-nano test7.yml
-nano test8.yml
-nano test9.yml
+nano Deploiement ADC .yml
+nano Integration ADC .yml
+nano Practices Jenkins.yml
+nano Practices Git.yml
+nano Practices Vault.yml
 #creation de fichier hosts
  nano inventory.ini 
 #exuction de fichier )
 ansible-playbook -i Déploiment automatisé/inventory.ini Deploiement ADC .yml -vv
-ansible-playbook -i inventory.ini test6.yml -vv
-ansible-playbook -i inventory.ini test7.yml -vv
-ansible-playbook -i inventory.ini test8.yml -vv
-ansible-playbook -i inventory.ini test9.yml -vv
+ansible-playbook -i inventory.ini Integration ADC .yml -vv
+ansible-playbook -i inventory.ini Practices Jenkins.yml -vv
+ansible-playbook -i inventory.ini Practices Git.yml -vv
+ansible-playbook -i inventory.ini Practices Vault.yml -vv
