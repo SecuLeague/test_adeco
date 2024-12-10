@@ -1,116 +1,133 @@
 ---
-- name: Test Jenkins Pipeline for Codel Project Deployment
+- name: Test CODEL 1.0.0 Git Repository and Jenkins Integration
   hosts: localhost
   connection: local
   gather_facts: no
 
+  pre_tasks:
+    - name: Install required packages
+      pip:
+        name: 
+          - python-jenkins
+          - requests
+        state: present
+      become: yes
+
   vars:
+    ansible_ssh_pass: ro0t@sys
+    ansible_ssh_timeout: 60
+    git_repo: "/root/CODEL1.0"
     jenkins_url: "http://192.168.150.10:8080"
     jenkins_user: "amal"
-    jenkins_password: "Seculeague@2024"
-    project_name: "Codel-Deployment"
-    git_repo: "https://github.com/SecuLeague/CODEL1.0.git"
-    ssh_key_path: "~/.ssh/id_rsa"
-    ansible_python_interpreter: /usr/bin/python3
-    target_server: "172.16.0.110"
+    jenkins_api_token: "11e6cdba6083554658c8463aaecbe80e10"
+    job_name: "CODEL1.0-CI"
 
   tasks:
-    - name: Ensure Jenkins is running
+    - name: Create Jenkins job template
+      copy:
+        content: |
+          <?xml version='1.0' encoding='UTF-8'?>
+          <project>
+            <description>{{ job_name }}</description>
+            <scm class="hudson.plugins.git.GitSCM">
+              <userRemoteConfigs>
+                <hudson.plugins.git.UserRemoteConfig>
+                  <url>{{ git_repo }}</url>
+                </hudson.plugins.git.UserRemoteConfig>
+              </userRemoteConfigs>
+              <branches>
+                <hudson.plugins.git.BranchSpec>
+                  <name>*/main</name>
+                </hudson.plugins.git.BranchSpec>
+              </branches>
+            </scm>
+          </project>
+        dest: "jenkins_job_template.xml"
+
+    - name: Vérifier l'état du dépôt Git manuellement
+      command: ssh root@192.168.150.10 "cd {{ git_repo }} && /usr/bin/git status"
+      register: git_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Afficher l'état Git
+      debug:
+        var: git_status.stdout_lines
+
+    - name: Obtenir le crumb CSRF
+      uri:
+        url: "{{ jenkins_url }}/crumbIssuer/api/json"
+        method: GET
+        user: "{{ jenkins_user }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        validate_certs: no
+      register: crumb_response
+      ignore_errors: yes
+
+    - name: Vérifier que Jenkins est en cours d'exécution
       uri:
         url: "{{ jenkins_url }}"
         method: GET
         status_code: 200
         user: "{{ jenkins_user }}"
-        password: "{{ jenkins_password }}"
+        password: "{{ jenkins_api_token }}"
         force_basic_auth: yes
+        validate_certs: no
       register: jenkins_status
 
-    - name: Create Jenkins job
-      jenkins_job:
-        config: "{{ lookup('template', 'jenkins_job_template.xml.j2') }}"
-        name: "{{ project_name }}"
-        password: "{{ jenkins_password }}"
-        url: "{{ jenkins_url }}"
+    - name: Créer un job Jenkins
+      uri:
+        url: "{{ jenkins_url }}/createItem?name={{ job_name | urlencode }}"
+        method: POST
         user: "{{ jenkins_user }}"
-      register: jenkins_job
-
-    - name: Debug Jenkins job creation
-      debug:
-        var: jenkins_job
-
-    - name: Generate SSH key if not exists
-      command: ssh-keygen -t rsa -b 2048 -f {{ ssh_key_path }} -N ""
-      args:
-        creates: "{{ ssh_key_path }}"
-
-    - name: Add SSH public key to authorized_keys on target server
-      authorized_key:
-        user: root
-        state: present
-        key: "{{ lookup('file', ssh_key_path + '.pub') }}"
-      delegate_to: "{{ target_server }}"
-
-    - name: Ping target server
-      ping:
-        host: "{{ target_server }}"
-      register: ping_result
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        body_format: raw
+        body: "{{ lookup('file', 'jenkins_job_template.xml') }}"
+        status_code: [200, 201, 400]
+        headers:
+          Content-Type: "application/xml"
+          "{{ crumb_response.json.crumbRequestField }}": "{{ crumb_response.json.crumb }}"
+        validate_certs: no
+      register: create_job_result
       ignore_errors: yes
 
-    - name: Display ping result
-      debug:
-        var: ping_result
-
-    - name: Check if SSH port is open
-      wait_for:
-        host: "{{ target_server }}"
-        port: 22
-        timeout: 10
-      register: port_check
-      ignore_errors: yes
-
-    - name: Display port check result
-      debug:
-        var: port_check
-
-    - name: Test SSH connection
-      command: ssh -v -o BatchMode=yes -o ConnectTimeout=10 root@{{ target_server }} echo success
-      register: ssh_test
-      ignore_errors: yes
-
-    - name: Display SSH test result
-      debug:
-        var: ssh_test
-
-    - name: Check SSH service status
-      command: systemctl is-active sshd
-      register: ssh_service_status
-      delegate_to: "{{ target_server }}"
-      ignore_errors: yes
-
-    - name: Display SSH service status
-      debug:
-        var: ssh_service_status
-
-    - name: Trigger Jenkins job
-      jenkins_job:
-        name: "{{ project_name }}"
-        url: "{{ jenkins_url }}"
+    - name: Déclencher le job Jenkins
+      uri:
+        url: "{{ jenkins_url }}/job/{{ job_name | urlencode }}/build"
+        method: POST
         user: "{{ jenkins_user }}"
-        password: "{{ jenkins_password }}"
-        state: build
-      when: jenkins_job is defined and jenkins_job.changed
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        status_code: [201, 302, 400]
+        headers:
+          "{{ crumb_response.json.crumbRequestField }}": "{{ crumb_response.json.crumb }}"
+        validate_certs: no
+      register: trigger_job_result
+      ignore_errors: yes
 
-    - name: Wait for job to complete
-      jenkins_job_info:
-        name: "{{ project_name }}"
+    - name: Attendre que le job soit terminé
+      uri:
+        url: "{{ jenkins_url }}/job/{{ job_name | urlencode }}/api/json"
+        method: GET
         user: "{{ jenkins_user }}"
-        password: "{{ jenkins_password }}"
-        url: "{{ jenkins_url }}"
+        password: "{{ jenkins_api_token }}"
+        force_basic_auth: yes
+        return_content: yes
+        validate_certs: no
       register: job_info
-      until: job_info.jobs[0].color != 'blue_anime'
+      until: job_info.json is defined and job_info.json.color is defined and job_info.json.color != 'blue_anime'
       retries: 10
       delay: 30
+      ignore_errors: yes
+      when: trigger_job_result.status in [201, 302]
 
-    - name: Display job result
+    - name: Afficher les résultats
       debug:
-        var: job_info.jobs[0].color
+        msg:
+          - "État Git : {{ git_status.stdout_lines | default('Non disponible') }}"
+          - "Jenkins status : {{ jenkins_status.status | default('Non disponible') }}"
+          - "Création du job : {{ 'Réussie' if create_job_result.status in [200, 201] else 'Échouée ou job déjà existant' }}"
+          - "Déclenchement du job : {{ 'Réussi' if trigger_job_result.status in [201, 302] else 'Échoué' }}"
+          - "État final du job : {{ job_info.json.color | default('Non disponible') if job_info.json is defined else 'Non disponible' }}"
