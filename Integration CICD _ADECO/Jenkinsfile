@@ -1,0 +1,42 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                // Cloner le dépôt contenant le script Python
+                git branch: 'main', url: 'https://github.com/SecuLeague/test_adeco.git'
+            }
+        }
+
+        stage('Setup Python Environment') {
+            steps {
+                // Installer les dépendances Python
+                sh '''
+                python3 -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt || echo "No dependencies found"
+                '''
+            }
+        }
+
+        stage('Run Python Script') {
+            steps {
+                // Exécuter le script Python
+                sh '''
+                source venv/bin/activate
+                python3 "Integration CICD_ADECO/script.py"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline terminé avec succès !"
+        }
+        failure {
+            echo "Pipeline échoué. Consultez les logs pour plus d'informations."
+        }
+    }
+}
