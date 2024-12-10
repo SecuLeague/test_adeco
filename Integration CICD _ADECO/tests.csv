@@ -1,0 +1,16 @@
+id_cas_de_test_globale,nom_de_cas_de_test_globale,sous_cas_de_test
+1,Deploiement automatisée,Deploiement ADC
+1,Deploiement automatisée,Integration ADC
+1,Deploiement automatisée,Practices Jenkins
+1,Deploiement automatisée,Practices Git
+1,Deploiement automatisée,Practices Vault
+2,Installation Nginx,check_nginx
+3,Moitoring ADC,zabbix_agent_install
+4,Sécuriser ADC,Sécuriser ADC
+5,Intégration des services,Firewall-01_selenuim
+5,Intégration des services,Firewall-02_selenuim
+5,Intégration des services,Seculeague_selenuim
+5,Intégration des services,Soare_selenuim
+5,Intégration des services,Uclid_selenuim
+5,Intégration des services,Qradar_selenuim
+5,Intégration des services,Web Scani_selenuim
